@@ -80,7 +80,7 @@ CREATE TABLE StudentFeeSummary (
     StudentID INT PRIMARY KEY,
     TotalFeeAmount DECIMAL(10,2) NOT NULL,
     TotalPaidAmount DECIMAL(10,2) NOT NULL DEFAULT 0,
-    OutstandingAmount AS (TotalFeeAmount - TotalPaidAmount) PERSISTED,
+    OutstandingAmount AS (TotalFeeAmount - TotalPaidAmount) PERSISTED,--computed coloumn
     LastUpdated DATETIME DEFAULT GETDATE(),
     CONSTRAINT FK_StudentFeeSummary_Student FOREIGN KEY (StudentID) REFERENCES Student(StudentID)
 );
@@ -128,3 +128,68 @@ ALTER TABLE SubjectCourse
 DROP COLUMN Semester;
 
 EXEC sp_rename 'StudentMarks.EnrollemntID', 'EnrollemntID', 'COLUMN';
+
+
+--log table
+CREATE TABLE StudentContactLog (
+    LogID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID INT NOT NULL,
+    OldPhone NVARCHAR(20),
+    NewPhone NVARCHAR(20),
+    OldEmail NVARCHAR(100),
+    NewEmail NVARCHAR(100),
+    OldAddress NVARCHAR(255),
+    NewAddress NVARCHAR(255),
+    ChangeDate DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_StudentContactLog_Student FOREIGN KEY (StudentID) REFERENCES Student(StudentID)
+);
+
+ALTER TABLE CourseEnrollment
+ADD CONSTRAINT UQ_CourseEnrollment_Student_Course UNIQUE (StudentID, CourseID);
+
+ALTER TABLE SubjectCourse
+ADD CONSTRAINT UQ_SubjectCourse_Subject_Course UNIQUE (SubjectID, CourseID);
+
+ALTER TABLE TeacherSubject
+ADD CONSTRAINT UQ_TeacherSubject_Teacher_Subject UNIQUE (TeacherID, SubjectID);
+
+CREATE TABLE TeacherContact (
+    TeacherID INT PRIMARY KEY,
+    Phone VARCHAR(20),
+    Email VARCHAR(100),
+    Address VARCHAR(255),
+    EmergencyContact VARCHAR(100),
+    CONSTRAINT FK_TeacherContact_Teacher 
+        FOREIGN KEY (TeacherID) REFERENCES Teacher(TeacherID)
+);
+
+CREATE TABLE TeacherSalaryPayment (
+    SalaryID INT IDENTITY(1,1) PRIMARY KEY,
+    TeacherID INT,
+    SalaryMonth VARCHAR(7), -- Format: 'YYYY-MM' (e.g., '2025-06')
+    PaymentDate DATE,
+    AmountPaid DECIMAL(10,2),
+    PaymentMethod VARCHAR(50),
+    Remarks VARCHAR(255),
+    CONSTRAINT FK_TeacherSalaryPayment_Teacher
+        FOREIGN KEY (TeacherID) REFERENCES Teacher(TeacherID)
+);
+
+-- Benefit master table
+CREATE TABLE Benefit (
+    BenefitID INT IDENTITY(1,1) PRIMARY KEY,
+    BenefitName VARCHAR(100) NOT NULL,
+    Description VARCHAR(255)
+);
+
+-- Junction table for many-to-many: Teacher <-> Benefit
+CREATE TABLE TeacherBenefit (
+    TeacherID INT,
+    BenefitID INT,
+    GrantedDate DATE,
+    Remarks VARCHAR(255),
+    PRIMARY KEY (TeacherID, BenefitID),
+    CONSTRAINT FK_TeacherBenefit_Teacher FOREIGN KEY (TeacherID) REFERENCES Teacher(TeacherID),
+    CONSTRAINT FK_TeacherBenefit_Benefit FOREIGN KEY (BenefitID) REFERENCES Benefit(BenefitID)
+);
+
