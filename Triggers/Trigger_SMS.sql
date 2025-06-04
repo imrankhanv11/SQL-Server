@@ -186,3 +186,52 @@ BEGIN
     SELECT SubjectID, CourseID
     FROM inserted;
 END;
+
+---------------------------------------------------------
+---for studentsubjectteacher
+CREATE TRIGGER trg_Validate_StudentSubjectTeacher
+ON StudentSubjectTeacher
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        LEFT JOIN CourseEnrollment ce
+            ON i.StudentID = ce.StudentID AND i.CourseID = ce.CourseID
+        WHERE ce.EnrollmentID IS NULL
+    )
+    BEGIN
+        RAISERROR('Student is not enrolled in the selected course.', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        LEFT JOIN SubjectCourse sc
+            ON i.SubjectID = sc.SubjectID AND i.CourseID = sc.CourseID
+        WHERE sc.SubjectCourseID IS NULL
+    )
+    BEGIN
+        RAISERROR('Subject is not part of the selected course.', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        LEFT JOIN TeacherSubject ts
+            ON i.TeacherID = ts.TeacherID AND i.SubjectID = ts.SubjectID
+        WHERE ts.TeacherSubjectID IS NULL
+    )
+    BEGIN
+        RAISERROR('Teacher is not assigned to the selected subject.', 16, 1);
+        RETURN;
+    END
+
+    INSERT INTO StudentSubjectTeacher (StudentID, CourseID, SubjectID, TeacherID)
+    SELECT StudentID, CourseID, SubjectID, TeacherID FROM inserted;
+END;
