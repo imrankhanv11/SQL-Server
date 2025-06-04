@@ -498,3 +498,29 @@ BEGIN
 
 	END CATCH
 END
+
+--------
+CREATE PROCEDURE InsertIntoSubjectCourse
+    @SubjectID INT,
+    @CourseID INT,
+    @IsMandatory BIT,
+    @TeacherID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1 
+        FROM TeacherSubject 
+        WHERE SubjectID = @SubjectID AND TeacherID = @TeacherID
+    )
+    BEGIN
+        INSERT INTO SubjectCourse (SubjectID, CourseID, IsMandatory, TeacherID)
+        VALUES (@SubjectID, @CourseID, @IsMandatory, @TeacherID);
+    END
+    ELSE
+    BEGIN
+        THROW 50001, 'Invalid combination: SubjectID and TeacherID do not match in TeacherSubject table.', 1;
+    END
+END;
+
