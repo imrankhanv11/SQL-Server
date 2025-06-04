@@ -36,3 +36,17 @@ JOIN
 
 --------------------------------------------------------------------------------------
 
+SELECT 
+    st.StudentName,
+    c.CourseName,
+    s.Name AS SubjectName,
+    t.Name AS TeacherName,
+    d.DepartmentName
+FROM SubjectCourse sc
+JOIN Subject s ON sc.SubjectID = s.SubjectID
+JOIN Course c ON sc.CourseID = c.CourseID
+JOIN Teacher t ON sc.TeacherID = t.TeacherID
+JOIN Department d ON t.DepartmentID = d.DepartmentID
+JOIN CourseEnrollment ce ON c.CourseID = ce.CourseID
+JOIN Student st ON ce.StudentID = st.StudentID
+ORDER BY c.CourseName, st.StudentName;

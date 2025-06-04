@@ -193,3 +193,19 @@ CREATE TABLE TeacherBenefit (
     CONSTRAINT FK_TeacherBenefit_Benefit FOREIGN KEY (BenefitID) REFERENCES Benefit(BenefitID)
 );
 
+ALTER TABLE SubjectCourse
+ADD TeacherID INT CONSTRAINT FK_subCor_Teacher FOREIGN KEY (TeacherID) REFERENCES Teacher(TeacherID);
+
+SELECT * FROM SubjectCourse
+
+UPDATE SubjectCourse
+SET TeacherID = 
+    CASE 
+        WHEN SubjectCourseID = 1 THEN 1
+        WHEN SubjectCourseID = 2 THEN 2
+        WHEN SubjectCourseID = 3 THEN 3
+        WHEN SubjectCourseID = 4 THEN 4
+        WHEN SubjectCourseID = 5 THEN 5
+        WHEN SubjectCourseID IN (6, 7, 8, 9, 10) THEN 6
+        ELSE TeacherID
+    END;

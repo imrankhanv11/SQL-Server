@@ -183,6 +183,36 @@ INSERT INTO StudentMarks (SubjectCourseID, EnrollemntID, Marks) VALUES
 (5, 5, 78), 
 (7, 5, 89);
 
+
+
+-- Insert Department
+INSERT INTO Department (DepartmentName, DepartmentHead) VALUES ('Computer Science', 'Dr. Smith');
+
+-- Insert Teacher
+INSERT INTO Teacher (Name, DepartmentId) VALUES ('Mr. John', 1);
+
+-- Insert Course
+INSERT INTO Course (CourseName, CourseCode) VALUES ('BSc CS', 'BSC101');
+
+-- Insert Subject
+INSERT INTO Subject (Name, SubjectCode) VALUES ('Data Structures', 'CS201');
+
+-- Insert Student
+INSERT INTO Student (StudentName, DOB, Gender) VALUES ('Alice', '2003-05-10', 'Female');
+
+-- Enroll student in course
+INSERT INTO CourseEnrollment (StudentID, CourseID) VALUES (1, 1);
+
+-- Link subject to course
+INSERT INTO SubjectCourse (SubjectID, CourseID, IsMandatory) VALUES (1, 1, 1);
+
+-- Assign teacher to subject
+INSERT INTO TeacherSubject (TeacherID, SubjectID) VALUES (1, 1);
+
+
+---for test 
+
+
 ----------------------------------------------------------------------------------------------------------
 SELECT * FROM Student;
 SELECT * FROM Course;
@@ -196,6 +226,12 @@ SELECT * FROM StudentFeeSummary;
 SELECT * FROM StudentFeePayment;
 SELECT * FROM StudentContact;
 SELECT * FROM StudentMarks;
+
+
+
+
+
+
 
 
 
