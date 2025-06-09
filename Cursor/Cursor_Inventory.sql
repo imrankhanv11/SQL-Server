@@ -74,4 +74,97 @@ EXEC sp_AddSaleWithDetails
     @sale_date = GETDATE(),
     @total_price = 41000,
     @user_id = 2,
-    @Details = @saleItems;                 
+    @Details = @saleItems;     
+	
+--------------------------------------
+--CREATE TYPE
+CREATE TYPE SALESTABLE AS TABLE
+(
+	ProudctID INT,
+	QUANTITY INT,
+	PRICE DECIMAL(16,5)
+);
+GO
+CREATE OR ALTER PROCEDURE SaleProducts
+	@customerId INT,
+	@saleDate DATE,
+	@userId INT,
+	@warehouseId INT,
+	@salesdetails SALESTABLE READONLY
+AS	
+BEGIN
+	SET NOCOUNT ON;
+
+	DECLARE @saleId INT;
+	DECLARE @totalprice DECIMAL(16,5);
+
+	BEGIN TRY
+		IF NOT EXISTS ( SELECT 1 FROM Customers WHERE customer_id = @customerId )
+		BEGIN 
+			RAISERROR('CUSTOMER ID NOT FOUND',16,1);
+			RETURN
+		END
+
+		SELECT @totalprice = SUM(QUANTITY * PRICE) FROM @salesdetails;
+
+		BEGIN TRANSACTION;
+
+		INSERT INTO Sales (customer_id, sale_date, total_price, user_id)
+		VALUES (@customerId, @saleDate, @totalprice, @userId);
+
+		SET @saleId = SCOPE_IDENTITY();
+
+		INSERT INTO SalesDetails (sale_id, product_id, quantity, price)
+		SELECT @saleId, ProudctID, QUANTITY, QUANTITY*PRICE AS PRICE FROM @salesdetails;
+
+		DECLARE @product_id INT, @qty INT, @price DECIMAL(16,5);
+
+		DECLARE product_cursor CURSOR FOR
+			SELECT ProudctID, QUANTITY, PRICE FROM @salesdetails;
+
+		OPEN product_cursor;
+		FETCH NEXT FROM product_cursor INTO @product_id, @qty, @price;
+
+		WHILE @@FETCH_STATUS = 0
+		BEGIN
+			UPDATE ProductWarehouseStock
+			SET quantity_in_stock = quantity_in_stock - @qty
+			WHERE product_id = @product_id AND warehouse_id = @warehouseId;
+
+			INSERT INTO Inventory_Log (product_id, action, quantity, action_date, reference_id, user_id, warehouse_id)
+			VALUES (@product_id, 'SALE', @qty, @saleDate, @saleId, @userId, @warehouseId);
+
+			FETCH NEXT FROM product_cursor INTO @product_id, @qty, @price;
+		END
+
+		CLOSE product_cursor;
+		DEALLOCATE product_cursor;
+
+		COMMIT TRANSACTION;
+
+		PRINT 'Sale completed. Sale ID: ' + CAST(@saleId AS VARCHAR);
+
+	END TRY
+
+	BEGIN CATCH
+		ROLLBACK TRANSACTION;
+		PRINT 'Error: ' + ERROR_MESSAGE();
+	END CATCH
+END;
+GO
+
+------------
+DECLARE @sales SALESTABLE;
+
+INSERT INTO @sales (ProudctID, QUANTITY, PRICE)
+VALUES 
+    (1, 2, 150.00), 
+    (2, 1, 200.00);  
+
+EXEC SaleProducts 
+    @customerId    = 2,
+    @saleDate      = '2025-06-11',
+    @userId        = 1,
+    @warehouseId   = 1,
+    @salesdetails  = @sales;
+
