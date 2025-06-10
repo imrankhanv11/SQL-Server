@@ -54,7 +54,7 @@ BEGIN
 END
 
 --FOR PURCHASES
-CREATE OR ALTER PROCEDURE purchasesproducts
+CREATE OR ALTER PROCEDURE purchasesproducts 
 	@productID INT,
 	@supplierID INT,
 	@quantity INT,
@@ -111,9 +111,18 @@ BEGIN
 				ROLLBACK TRANSACTION;
 				RETURN
 			END
-
-			INSERT INTO ProductWarehouseStock ( product_id, warehouse_id, quantity_in_stock )
-			VALUES ( @productID, @warehouseid, @quantity )
+			
+			IF NOT EXISTS ( SELECT 1 FROM ProductWarehouseStock WHERE product_id = @productID )
+			BEGIN
+				INSERT INTO ProductWarehouseStock ( product_id, warehouse_id, quantity_in_stock )
+				VALUES ( @productID, @warehouseid, @quantity )
+			END
+			ELSE
+			BEGIN
+				UPDATE ProductWarehouseStock
+				SET quantity_in_stock = quantity_in_stock + @quantity
+				WHERE product_id = @productID AND warehouse_id = @warehouseId;
+			END
 
 			INSERT INTO Inventory_Log ( product_id, action, quantity, action_date, user_id, warehouse_id )
 			VALUES ( @productID, 'PURCHASE', @quantity, @purchaseDate, @user_id, @warehouseid)
@@ -263,3 +272,47 @@ EXEC SaleProducts
 
 SELECT * FROM Sales;
 SELECT * FROM SalesDetails;
+
+CREATE PROCEDURE CustomerReview
+	@customerID INT,
+	@productID INT,
+	@rating INT,
+	@comments VARCHAR(500),
+	@reviewDate DATE = NULL
+AS
+BEGIN
+	
+	SET NOCOUNT ON;
+
+	BEGIN TRY
+		IF NOT EXISTS ( SELECT 1 FROM Customers WHERE customer_id = @customerID )
+		BEGIN
+			RAISERROR('CUSTOMER ID NOT FOUND', 16, 1);
+			RETURN;
+		END
+
+		IF NOT EXISTS ( SELECT 1 FROM Products WHERE product_id = @productID )
+		BEGIN
+			RAISERROR('PRODUCT ID NOT FOUND', 16 ,1);
+			RETURN
+		END
+
+		IF @rating > 5 OR @rating < 0 
+		BEGIN 
+			RAISERROR('RATING SHOULD BE IN 0 TO 5', 16, 1);
+			RETURN
+		END
+
+		INSERT INTO ProductReviews ( customer_id, product_id, rating, comments, review_date)
+		VALUES ( @customerID, @productID, @rating, @comments, @reviewDate)
+
+	END TRY
+
+	BEGIN CATCH
+		DECLARE @ERR_MESSAGE VARCHAR(200), @ERR_NUMBER INT;
+		
+		SELECT @ERR_MESSAGE = ERROR_MESSAGE(), @ERR_NUMBER = ERROR_NUMBER();
+
+		RAISERROR(@ERR_MESSAGE, @ERR_NUMBER, 16, 1);
+	END CATCH
+END
