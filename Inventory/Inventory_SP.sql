@@ -112,7 +112,7 @@ BEGIN
 				RETURN
 			END
 			
-			IF NOT EXISTS ( SELECT 1 FROM ProductWarehouseStock WHERE product_id = @productID )
+			IF NOT EXISTS ( SELECT 1 FROM ProductWarehouseStock WHERE product_id = @productID AND warehouse_id = @warehouseid )
 			BEGIN
 				INSERT INTO ProductWarehouseStock ( product_id, warehouse_id, quantity_in_stock )
 				VALUES ( @productID, @warehouseid, @quantity )
