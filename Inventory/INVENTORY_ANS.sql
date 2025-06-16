@@ -614,3 +614,75 @@ SELECT supplier_id, AVG(TOTAL_COST) AS AVGPRICE
 FROM Purchases
 WHERE YEAR(purchase_date) = 2024
 GROUP BY supplier_id
+
+--🗓️ Date-Based Queries (8 questions)
+--1.	Find the total number of purchases made each month in 2025.
+SELECT 
+    MONTH(purchase_date) AS PurchaseMonth,
+    COUNT(*) AS TotalPurchases
+FROM 
+    Purchases
+WHERE 
+    YEAR(purchase_date) = 2025
+GROUP BY 
+    MONTH(purchase_date)
+ORDER BY 
+    PurchaseMonth;
+ 
+--2.	List all customers who made purchases only in the last 60 days.
+SELECT C.NAME
+FROM Customers C
+JOIN Sales S ON S.customer_id = C.customer_id
+WHERE sale_date >= DATEADD(DAY, -60, GETDATE());
+
+SELECT C.name
+FROM Customers C
+WHERE C.customer_id IN (
+    SELECT customer_id
+    FROM Sales
+    GROUP BY customer_id
+    HAVING MIN(sale_date) >= DATEADD(DAY, -60, GETDATE())
+)
+
+--3.	Show the top 3 most sold products in the current year.
+SELECT TOP 3 
+    P.name AS ProductName,
+    SUM(SD.quantity) AS TotalQuantitySold
+FROM 
+    Products P
+JOIN 
+    SalesDetails SD ON SD.product_id = P.product_id
+JOIN 
+    Sales S ON S.sale_id = SD.sale_id
+WHERE 
+    YEAR(S.sale_date) = YEAR(GETDATE())
+GROUP BY 
+    P.product_id, P.name
+ORDER BY 
+    TotalQuantitySold DESC;
+
+--4.	Find the number of reviews submitted per week over the last 2 months.
+SELECT COUNT(*) AS REVIEW
+FROM ProductReviews 
+WHERE review_date >= DATEADD(DAY, -60, GETDATE())
+GROUP BY DATEPART(WEEK, REVIEW_DATE)
+
+--5.	Get suppliers who received at least one payment in the last 90 days.
+SELECT S.NAME
+FROM Suppliers S
+JOIN Purchases P ON P.supplier_id = S.supplier_id 
+JOIN SupplierPayments SP ON SP.purchase_id = P.purchase_id
+WHERE payment_date >= DATEADD(DAY, -90, GETDATE())
+
+--7.	List all sales where the sale date is on a weekend (Saturday or Sunday).
+SELECT sale_date
+FROM Sales
+WHERE DATENAME(WEEKDAY, SALE_DATE) IN ( 'SUNDAY','SATURDAY');
+
+--8.	Show customers who haven’t made any purchase in the last 6 months.
+SELECT C.name
+FROM Customers C
+LEFT JOIN Sales S ON C.customer_id = S.customer_id 
+    AND S.sale_date >= DATEADD(MONTH, -6, GETDATE())
+WHERE S.sale_id IS NULL;
+
