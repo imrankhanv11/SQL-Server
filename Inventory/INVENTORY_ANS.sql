@@ -686,3 +686,37 @@ LEFT JOIN Sales S ON C.customer_id = S.customer_id
     AND S.sale_date >= DATEADD(MONTH, -6, GETDATE())
 WHERE S.sale_id IS NULL;
 
+--🔁 Subquery-Based Queries (7 questions)
+--9.	List all products with a price higher than the average price of all products.
+SELECT P.name
+FROM Products P
+WHERE P.price > ( SELECT AVG(PRICE) FROM Products)
+
+--10.	Find customers who made more purchases than the average number of purchases per customer.
+SELECT C.name
+FROM Customers C
+JOIN Sales S ON C.customer_id = S.customer_id
+GROUP BY C.customer_id, C.name
+HAVING COUNT(*) > (
+    SELECT AVG(PurchaseCount)
+    FROM (
+        SELECT COUNT(*) AS PurchaseCount
+        FROM Sales
+        GROUP BY customer_id
+    ) AS AvgPerCustomer
+);
+
+--12.	Show the names of products that have never been sold.
+SELECT P.NAME
+FROM Products P
+LEFT JOIN SalesDetails SD ON SD.product_id = P.product_id
+WHERE sale_detail_id IS NULL;
+
+SELECT P.NAME
+FROM Products P
+WHERE P.product_id NOT IN ( SELECT product_id FROM SalesDetails);
+
+--13.	Find products whose total quantity in stock is greater than all other products.
+SELECT P.NAME
+FROM Products P
+WHERE SUM(Q > ( SELECT SUM(QUANTITY_IN_STOCK) FROM ProductWarehouseStock )
