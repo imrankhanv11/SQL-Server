@@ -1,24 +1,56 @@
 --Write a query that returns the 7-day rolling average of sales for each product from a table Sales(ProductID, SaleDate, SalesAmount).
+-- Step 1: Create the SALES table
+CREATE TABLE SALES (
+    ProductID INT,
+    ProductName VARCHAR(100),
+    SaleDate DATE,
+    SaleAmount DECIMAL(10, 2)
+);
+
+INSERT INTO SALES (ProductID, ProductName, SaleDate, SaleAmount)
+VALUES
+-- Product A
+(1, 'Product A', '2025-06-01', 100.00),
+(1, 'Product A', '2025-06-02', 110.00),
+(1, 'Product A', '2025-06-03', 120.00),
+(1, 'Product A', '2025-06-04', 90.00),
+(1, 'Product A', '2025-06-05', 95.00),
+(1, 'Product A', '2025-06-06', 105.00),
+(1, 'Product A', '2025-06-07', 115.00),
+(1, 'Product A', '2025-06-08', 130.00),
+(1, 'Product A', '2025-06-09', 125.00),
+(1, 'Product A', '2025-06-10', 140.00),
+
+-- Product B
+(2, 'Product B', '2025-06-01', 200.00),
+(2, 'Product B', '2025-06-03', 220.00),
+(2, 'Product B', '2025-06-05', 210.00),
+(2, 'Product B', '2025-06-07', 190.00),
+(2, 'Product B', '2025-06-10', 230.00);
+
 WITH CTE AS (
-	SELECT 
-        PRODUCTID,
-        PRODUCTNAME, 
-        SALEDATE, 
-        SUM(SALEAMOUNT) AS AVGVALUE
+    SELECT 
+        ProductID,
+        ProductName, 
+        SaleDate, 
+        SUM(SaleAmount) AS AVGVALUE
     FROM SALES
-    GROUP BY PRODUCTID, PRODUCTNAME, SALEDATE
+    GROUP BY ProductID, ProductName, SaleDate
 )
 SELECT 
     ProductID, 
+    ProductName,
     SaleDate, 
-    SalesAmount,
+    AVGVALUE AS SalesAmount,
     AVG(AVGVALUE) OVER (
         PARTITION BY ProductID 
         ORDER BY SaleDate 
         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
     ) AS Rolling7DayAvg
 FROM CTE
---
+ORDER BY ProductID, SaleDate;
+
+-------------------------------------------------------------------------------------
 SELECT 
     PRODUCTID, 
     PRODUCTNAME, 
@@ -40,12 +72,12 @@ FROM (
 ) AS SubSales 
 ORDER BY PRODUCTID, SALEDATE;
 
-----
+-------------------------------------------------------------------------------------
 WITH DailySales AS (
     SELECT 
         ProductID, 
         SaleDate, 
-        SUM(SalesAmount) AS TotalSales
+        SUM(SaleAmount) AS TotalSales
     FROM Sales
     GROUP BY ProductID, SaleDate
 )
@@ -61,7 +93,7 @@ SELECT
     ) AS Rolling7DayAvg
 FROM DailySales s1
 ORDER BY s1.ProductID, s1.SaleDate;
---
+-------------------------------------------------------------------------------------
 WITH DailySales AS (
     SELECT 
         ProductID, 
@@ -82,7 +114,7 @@ SELECT
     ) AS Rolling7DayAvg
 FROM DailySales s1
 ORDER BY s1.ProductID, s1.SaleDate;
-
+-------------------------------------------------------------------------------------
 --Write a query that returns each product’s daily sales and the difference compared to the previous day using LAG().
 SELECT 
 	ProductID,
@@ -402,3 +434,92 @@ WHERE YEAR(SALEDATE) = YEAR(GETDATE())
 GROUP BY DATEPART(ISO_WEEK, SALEDATE)
 ORDER BY WEEKNUMBER;
 
+--List all products that had sales every day for a given month (e.g., May 2025).
+WITH CTE AS (
+    SELECT 
+        PRODUCTNAME,
+        SALEDATE
+    FROM SALES
+    WHERE 
+        YEAR(SALEDATE) = YEAR(@DATE) AND 
+        MONTH(SALEDATE) = MONTH(@DATE)
+    GROUP BY PRODUCTNAME, SALEDATE
+)
+
+SELECT PRODUCTNAME
+FROM CTE
+GROUP BY PRODUCTNAME
+HAVING COUNT(DISTINCT SALEDATE) = DAY(EOMONTH(@DATE));
+
+--Calculate a 7-day moving average for total company sales (not per product).
+WITH CTE AS (
+	SELECT COMPANYNAME, SALEDATE, SUM(SALEAMOUNT) AS TOTALAMOUNT
+	FROM SALES
+	GROUP BY COMPANYNAME
+)
+SELECT COMPANYNAME, SALEDATE, TOTALAMOUNT,  ( SELECT AVG(TOTALAMOUNT) FROM CTE 1 WHERE 1.COMPANYNAME = 2.COMPANYNAME AND SALEDATE BETWEEN DATADD(DAY, -6, SALEDATE) AND SALEDATE ) AS AVGSALE7DAY
+FROM CTE 2
+--
+WITH CTE AS (
+	SELECT 
+		COMPANYNAME, 
+		SALEDATE, 
+		SUM(SALEAMOUNT) AS TOTALAMOUNT
+	FROM SALES
+	GROUP BY COMPANYNAME, SALEDATE
+)
+SELECT 
+	COMPANYNAME, SALEDATE, TOTALAMOUNT,
+	AVG(TOTALAMOUNT) OVER (
+		PARTITION BY COMPANYNAME 
+		ORDER BY SALEDATE 
+		ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+	) AS Rolling7DayAvg
+FROM CTE
+ORDER BY COMPANYNAME, SALEDATE;
+
+--Identify the longest streak of consecutive days with sales for each product.
+WITH DistinctSales AS (
+    SELECT DISTINCT ProductName, SaleDate
+    FROM SALES
+),
+NumberedSales AS (
+    SELECT 
+        ProductName,
+        SaleDate,
+        ROW_NUMBER() OVER (PARTITION BY ProductName ORDER BY SaleDate) AS RowNum
+    FROM DistinctSales
+),
+StreakGroups AS (
+    SELECT 
+        ProductName,
+        SaleDate,
+        DATEADD(DAY, -RowNum, SaleDate) AS StreakGroup
+    FROM NumberedSales
+),
+StreakCounts AS (
+    SELECT 
+        ProductName,
+        StreakGroup,
+        COUNT(*) AS StreakLength,
+        MIN(SaleDate) AS StartDate,
+        MAX(SaleDate) AS EndDate
+    FROM StreakGroups
+    GROUP BY ProductName, StreakGroup
+),
+MaxStreak AS (
+    SELECT 
+        ProductName,
+        MAX(StreakLength) AS MaxStreakLength
+    FROM StreakCounts
+    GROUP BY ProductName
+)
+SELECT 
+    s.ProductName,
+    s.StreakLength,
+    s.StartDate,
+    s.EndDate
+FROM StreakCounts s
+JOIN MaxStreak m
+  ON s.ProductName = m.ProductName AND s.StreakLength = m.MaxStreakLength
+ORDER BY s.ProductName;
