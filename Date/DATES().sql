@@ -140,3 +140,187 @@ JOIN Events e
     ON YEAR(o.OrderDate) = YEAR(e.EventDate) 
     AND MONTH(o.OrderDate) = MONTH(e.EventDate)
 ORDER BY Year, Month;
+
+---------------------------------------------------------------------------------------------------------------------
+------------------------------------ADVANCE DATES CONCEPTS WITH WINDOW FUNCTION -------------------------------------
+---------------------------------------------------------------------------------------------------------------------
+
+--Calculate number of sales per product per month for the current year
+SELECT 
+	productid, dateformat(saledate, 'yyyymm') as months, count(*)
+FROM SALE
+WHERE YEAR(SALEDATE) =  YEAR(GETDATE())
+GROUP BY PRODUCTID, MONTHS
+
+--Find the total sales for each product for each year.
+SELECT 
+    PRODUCTID, 
+    PRODUCTNAME, 
+    YEAR(SALEDATE) AS SALE_YEAR, 
+    COUNT(*) AS TOTALSALE
+FROM 
+    SALES
+GROUP BY 
+    PRODUCTID, 
+    PRODUCTNAME, 
+    YEAR(SALEDATE);
+
+--Get the number of sales transactions made each day for the last 15 days.
+SELECT 
+    CAST(SALESDATE AS DATE) AS SALEDATE, 
+    COUNT(*) AS SALESCOUNT
+FROM 
+    SALES
+WHERE 
+    SALESDATE >= DATEADD(DAY, -15, CAST(GETDATE() AS DATE))
+GROUP BY 
+    CAST(SALESDATE AS DATE)
+ORDER BY 
+    SALEDATE;
+
+--List all products that had their first sale in the current year.
+SELECT PRODUCTID, MIN(SALEDATE) AS FIRSTSALE
+FROM SALES
+WHERE YEAR(SALEDATE) = YEAR(GETDATE())
+GROUP BY PROUDUCTID;
+
+--Find the average sales amount per product for each month of the current year.
+SELECT PROUDUCTID, MONTH(SALEDATE) AS MONTHVALUE, AVG(SALEAMOUNT)
+FROM SALES
+WHERE YEAR(SALEDATE) = YEAR(GETDATE())
+GROUP BY PROUDUCTID, MONTH(SALEDATE)
+
+--Show the date with the highest total sales overall.
+WITH CTE AS (
+	SELECT CAST(SALEDATE AS DATE), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS RNK
+	FROM SALES
+	GROUP BY CAST(SALEDATE AS DATE)
+)
+SELECT SALEDATE
+FROM CTE
+WHERE RNK = 1;
+
+SELECT TOP 1 CAST(SALEDATE AS DATE) AS DATEDWITHHIGH, COUNT(*) AS VALUESS
+FROM SALES
+GROUP BY CAST(SALEDATE AS DATE)
+ORDER BY VALUESS DESC;
+
+--Find the day of the week with the most sales on average (e.g., Monday, Tuesday, etc.).
+SELECT TOP 1 DATENAME(WEEKDAY, SALEDATE) AS WEEKDAYNAME, AVG(SALEAMOUNT) AS HIGHT
+FROM SALES
+GROUP BY DATENAME(WEEKDAY, SALEDATE) 
+ORDER BY HIGHT DESC;
+
+--List all products that had a gap of more than 10 days between two consecutive sales.
+WITH CTE AS (
+    SELECT 
+        PRODUCTID, 
+        SALEDATE,
+        LAG(SALEDATE) OVER (PARTITION BY PRODUCTID ORDER BY SALEDATE) AS PREV_SALEDATE
+    FROM SALES
+)
+SELECT DISTINCT PRODUCTID
+FROM CTE
+WHERE PREV_SALEDATE IS NOT NULL 
+  AND DATEDIFF(DAY, PREV_SALEDATE, SALEDATE) > 10;
+
+--Calculate month-over-month sales growth per product.
+WITH MonthlySales AS (
+    SELECT 
+        PRODUCTID,
+        FORMAT(SALEDATE, 'yyyyMM') AS YEARMONTH,
+        SUM(SALEAMOUNT) AS TOTAL_SALE
+    FROM SALES
+    GROUP BY PRODUCTID, FORMAT(SALEDATE, 'yyyyMM')
+)
+SELECT 
+    PRODUCTID,
+    YEARMONTH,
+    TOTAL_SALE,
+    TOTAL_SALE - LAG(TOTAL_SALE) OVER (PARTITION BY PRODUCTID ORDER BY YEARMONTH) AS MoM_GROWTH
+FROM MonthlySales;
+
+--Get the total sales for each quarter of the last 2 years.
+SELECT 
+    YEAR(SALEDATE) AS SALE_YEAR,
+    DATEPART(QUARTER, SALEDATE) AS SALE_QUARTER,
+    SUM(SALEAMOUNT) AS TOTAL_SALES
+FROM SALES
+WHERE SALEDATE >= DATEADD(YEAR, -2, CAST(GETDATE() AS DATE))
+GROUP BY 
+    YEAR(SALEDATE), 
+    DATEPART(QUARTER, SALEDATE)
+ORDER BY 
+    SALE_YEAR, 
+    SALE_QUARTER;
+
+--with chatgpt
+--for half year
+SELECT 
+    YEAR(SALEDATE) AS SALE_YEAR,
+    CASE 
+        WHEN MONTH(SALEDATE) BETWEEN 1 AND 6 THEN 'H1'
+        WHEN MONTH(SALEDATE) BETWEEN 7 AND 12 THEN 'H2'
+    END AS HALF_YEAR,
+    SUM(SALEAMOUNT) AS TOTAL_SALES
+FROM SALES
+GROUP BY 
+    YEAR(SALEDATE),
+    CASE 
+        WHEN MONTH(SALEDATE) BETWEEN 1 AND 6 THEN 'H1'
+        WHEN MONTH(SALEDATE) BETWEEN 7 AND 12 THEN 'H2'
+    END
+ORDER BY 
+    SALE_YEAR,
+    HALF_YEAR;
+
+
+--Find products with no sales in the current month.
+SELECT PRODUCTNAME
+FROM PRODUCT
+WHERE PRODUCTID NOT IN (
+    SELECT PRODUCTID
+    FROM SALES
+    WHERE 
+        MONTH(SALEDATE) = MONTH(GETDATE()) AND 
+        YEAR(SALEDATE) = YEAR(GETDATE())
+);
+
+--Show the count of distinct sale dates per product.
+SELECT PRODUCTID, COUNT(DISTINCT CAST(SALEDATE AS DATE)) AS TOTALSALEDATE
+FROM SALES
+GROUP BY PROUDUCTID
+
+--List the most recent sale amount per product along with the number of days since that sale.
+SELECT 
+    PRODUCTID, 
+    MAX(CAST(SALEDATE AS DATE)) AS RECENT_SALE_DATE,
+    DATEDIFF(DAY, MAX(CAST(SALEDATE AS DATE)), CAST(GETDATE() AS DATE)) AS DAYS_SINCE_LAST_SALE
+FROM SALES
+GROUP BY PRODUCTID;
+
+--Find the number of sales made in each week of the current year.
+SELECT 
+    DATEPART(ISO_WEEK, SALEDATE) AS WEEKNUMBER,
+    COUNT(*) AS SALECOUNT
+FROM SALES
+WHERE YEAR(SALEDATE) = YEAR(GETDATE())
+GROUP BY DATEPART(ISO_WEEK, SALEDATE)
+ORDER BY WEEKNUMBER;
+
+--List all products that had sales every day for a given month (e.g., May 2025).
+WITH CTE AS (
+    SELECT 
+        PRODUCTNAME,
+        SALEDATE
+    FROM SALES
+    WHERE 
+        YEAR(SALEDATE) = YEAR(@DATE) AND 
+        MONTH(SALEDATE) = MONTH(@DATE)
+    GROUP BY PRODUCTNAME, SALEDATE
+)
+
+SELECT PRODUCTNAME
+FROM CTE
+GROUP BY PRODUCTNAME
+HAVING COUNT(DISTINCT SALEDATE) = DAY(EOMONTH(@DATE));
