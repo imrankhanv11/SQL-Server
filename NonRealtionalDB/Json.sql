@@ -17,5 +17,10 @@ SELECT
     JSON_VALUE(ProductDetails, '$.specs.cpu') AS CPU,
     JSON_VALUE(ProductDetails, '$.specs.ram') AS RAM,
 	JSON_VALUE(ProductDetails, '$.features[0]') AS Features
+FROM Products;
+
+SELECT 
+    Id,
+    JSON_QUERY(ProductDetails, '$.specs') AS FullSpecs
 FROM Products
-where JSON_VALUE(ProductDetails, '$.name') = 'Laptop';
+WHERE JSON_VALUE(ProductDetails, '$.name') = 'Laptop';
