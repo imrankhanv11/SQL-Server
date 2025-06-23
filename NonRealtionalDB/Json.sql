@@ -15,6 +15,7 @@ SELECT
     JSON_VALUE(ProductDetails, '$.name') AS ProductName,
     JSON_VALUE(ProductDetails, '$.price') AS Price,
     JSON_VALUE(ProductDetails, '$.specs.cpu') AS CPU,
-    JSON_VALUE(ProductDetails, '$.specs.ram') AS RAM
-FROM Products;
-
+    JSON_VALUE(ProductDetails, '$.specs.ram') AS RAM,
+	JSON_VALUE(ProductDetails, '$.features[0]') AS Features
+FROM Products
+where JSON_VALUE(ProductDetails, '$.name') = 'Laptop';
