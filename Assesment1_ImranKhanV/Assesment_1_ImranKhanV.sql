@@ -153,6 +153,20 @@ SELECT E2.Name AS Employee, E1.Name AS Manager
 FROM Employee E1
 INNER JOIN Employee E2 ON E1.EmployeeID = E2.ManagerID;
 
+with employeeout as (
+	select EmployeeID, name, ManagerID
+	from Employee
+	where ManagerID is null 
+
+	union all
+
+	select e1.EmployeeID, e1.name, e1.ManagerID
+	from Employee e1 
+	join employeeout e2 on e1.ManagerID=e2.EmployeeID
+)
+select *
+from employeeout
+
 --Q5. Write a query to return the second highest salary from the employees table.
 CREATE TABLE EmployeeQ5 (
     EmployeeID INT PRIMARY KEY,
@@ -350,6 +364,17 @@ AND o.CustomerID IN (
     HAVING COUNT(*) > 5
 );
 GO;
+
+CREATE OR ALTER VIEW CustomerRecentOrders2try AS
+SELECT o1.CustomerID, o1.OrderID, o1.OrderDate, o1.OrderAmount
+FROM Orders9 o1
+JOIN Orders9 o2
+    ON o1.CustomerID = o2.CustomerID
+GROUP BY o1.CustomerID, o1.OrderID, o1.OrderDate, o1.OrderAmount
+HAVING 
+    o1.OrderDate = MAX(o2.OrderDate)
+    AND COUNT(o2.OrderID) > 5;
+go;
 
 SELECT * FROM CustomerRecentOrders
 GO;
@@ -644,15 +669,15 @@ GO;
 SELECT * FROM vw_TraineeAttendanceRate;
 GO;
 --4. Create trigger that inserts a warning into a warning table if a trinee's attedance drops below 70%.
-CREATE TRIGGER trg_Warning
+CREATE or alter TRIGGER trg_Warning
 ON Attendance
 AFTER INSERT
 AS
 BEGIN
 	INSERT INTO AttendanceWarning (TraineeID, WarningDate, WarningMessage)
-	SELECT DISTINCT I.TraineeID, GETDATE(), 'Below 70%'
+	SELECT I.TraineeID, GETDATE(), 'Below 70%'
 	FROM inserted I
-	WHERE dbo.fn_AttendanceCheck(I.TraineeID) < 70 --If the call call properly then all right
+	WHERE dbo.fn_AttendanceCheck(I.TraineeID) < 70 --If the call properly then all right
 END
 GO;
 
