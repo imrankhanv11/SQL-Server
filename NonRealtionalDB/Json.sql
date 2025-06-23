@@ -1,7 +1,7 @@
 -- Create a table with a JSON column
 CREATE TABLE Products (
     Id INT PRIMARY KEY,
-    ProductDetails NVARCHAR(MAX) -- Store JSON document here
+    ProductDetails NVARCHAR(MAX) 
 );
 
 -- Insert JSON documents
