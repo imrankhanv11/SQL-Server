@@ -25,6 +25,16 @@ INSERT INTO SalesData (SalesPerson, Product, Quantity) VALUES
 ('Eve', 'Bananas', 1);
 GO
 
+INSERT INTO SalesData ( SalesPerson, Product, Quantity)
+VALUES 
+('Fraclin','Apples', 30),
+('Fraclin','Oranges', 29),
+('Fraclin','Oranges', 10),
+('Fraclin','Bananas', 25),
+('Fraclin','Apples', 24);
+Go;
+
+
 --Perform a PIVOT operation: show quantities by salesperson and product
 SELECT SalesPerson, [Apples], [Oranges], [Bananas]
 FROM
